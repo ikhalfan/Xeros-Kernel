@@ -1,0 +1,30 @@
+This ASCII file is to contain a description of any known problems or issues with your 
+assignment. If you know something doesn't work or you assignment is incomplete document
+it here so that the markers don't waste time trying to figure out if there is 
+some sort of build problem or issue when it is simply the case that things aren't
+working.
+
+
+"If you're having kernel problems I feel bad for you son,
+ I've got 99 problems but a bit ain't one."
+                -- Acton
+
+We actually have several problems, but it sorta runs!
+
+1. Trampoline: We could not figure out why our trampoline code won't trampoline
+               into user code. We thing the groundwork is there, but there might be
+               something we've overlooked
+
+2. low level kbd: The lower level keyboard's "device" struct is staticaly set.
+                  That is, we've manually set the address to run when open is called
+                  for example.
+
+3. Masking: bit masking is not working properly. The higher numbered signals still
+            get priority though.
+
+4. kbd read: read does not work because we could not figure out how to use the port numbers
+
+5. Interrupts: we could not get interrupt working properly in assignment 2. Since there was
+               no clean code for us to work on, interrupts are still not working properly
+
+6. A1 and A2: We ported nothing from A1 and A2 because we could not get either working 100%

@@ -1,0 +1,218 @@
+
+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_
+
+Test# 1
+
+Test Code:
+signal(1,10)
+signal(1,20)
+
+Output:
+If 10 does not run right away for some reason, 20 will run before it
+
+Reason/Rationale: We structured kernel such that the larger the signal number the more priority it has
+
+Comment:
+
+
+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_
+
+Test# 2
+
+Test Code:
+    void foo(void) {
+        //assuming 1 is root process
+        signal(1,18);
+    }
+
+    void i_was_called(void) {
+        kprintf("I was called!\n");
+    }
+
+    void root(void) {
+        syssighandler(18, (void (*)(void *)) i_was_called, NULL);
+        syscreate(&foo, 4096);
+    }
+
+Output:
+"I was called"
+
+Reason/Rationale:
+Root declares that it can handle signal 18 and that "i_was_called" function should be called.
+Root then creates a process foo and foo calls the signal
+
+Comment:
+
+
+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_
+
+Test# 3
+
+Test Code:
+int killerPID, victimPID;
+
+void killer( void ) {
+    sysputs("#user:KILLER");
+    sysyield();
+    int i;
+    for (i = 0; i < 5; i++) {
+        sysputs("K");
+        syssleep(1000);
+        sysyield();
+    }
+    syssleep(1000);
+
+    syskill(victimPID, 9);
+
+    sysstop();
+
+
+}
+
+void vHandler(void ) {
+    kprintf("#user:VHANDLER");
+    sysstop();
+}
+
+void victim( void ) {
+    kprintf("#user:VICTIM");
+
+    syssighandler(9, &vHandler, NULL);
+
+    sysyield();
+    int i;
+    for (i = 0; i < 22; i++) {
+        sysputs("V");
+        syssleep(1000);
+        sysyield();
+    }
+    syssleep(1000);
+
+
+    //We should not get here
+    kprintf("#user:victim");
+    sysstop();
+}
+
+
+void     root( void ) {
+    char  buff[100];
+    sysputs("Root has been called\n");
+
+    sysyield();
+    sysyield();
+
+    victimPID = syscreate(&victim, 4096);
+    killerPID = syscreate(&killer, 4096);
+
+    sprintf(buff, "Root finished\n");
+    sysputs( buff );
+    sysstop();
+}
+
+Output:
+#user:VICTIM
+#user:KILLER
+#user:VHANDLER
+
+Reason/Rationale:
+The victim is created first, then the killer. The victim loops 20 times wile killer only loops 5.
+This means that the killer will call vHandler() which kills the victim before the victim could finish.
+
+Comment:
+The end of victim should not be reached
+
+
+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_
+
+Test# 4 NOTE: THIS WAS NOT PART OF ASSIGNMENT 3
+
+Test Code:
+
+Output:
+
+Reason/Rationale:
+
+Comment:
+
+
+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_
+
+Test# 5
+
+Test Code: sysopen(-20)
+
+Output: -1
+
+Reason/Rationale: Expected the output of -1 since a device number may not be < 0.
+                  It must correspond to a predetermined device and the convention allows for
+                  numbers >=0.
+
+Comment:
+
+
+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_
+
+Test# 6
+
+Test Code: syswrite(-1, buff, 100)
+
+Output: -1
+
+Reason/Rationale: You can not write to our keyboard in this machine, the call will follow all paths to the di_write and
+                  see that the fd number is outside the range (ie it is < 0) and hence it will return -1.
+
+Comment:
+
+
+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_
+
+Test# 7
+
+Test Code: sysioctl(-10, 0x0)
+
+Output: -1
+
+Reason/Rationale: The case for command -10 is not supported (only 53 is) and so we will hit the default case which will
+                  result in -1 begin returned indicating a failure to perform the assignment of 0x0 to that command.
+
+Comment:
+
+
+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_
+
+Test# 8
+
+Test Code: buff = 2
+           sysread(1, buff, 100)
+
+Output: *first 2 characters (i.e. the buff)*
+
+Reason/Rationale: If the processes buffer is smaller than the kernels (i.e. size 4) then a sysread() happens only once,
+                  this would less output than that of the kernels buffer and there would be characters left behind.
+
+Comment:
+
+
+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_
+
+Test# 9
+
+Test : Testing for priority inversion with bitmasking. Say a high priority is dependent on a lower priority one and
+       the low order priority is hindered from running by other mid-high priority ones. The high priority one is
+       thus degraded to that of a low one
+
+Output: High priority doesn't get serviced, no output to show this.
+
+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_
+
+Test# 10
+
+Test Code: syssighandler(-5, NULL, NULL)
+
+Output: -1
+
+Reason/Rationale: syssighandler must have a valid signal number, -5 is not one. Moreover we must pass it a handler, NULL
+                  is an acceptable oldhandler but not an acceptable newhandler. Thus in this case there are two
+                  violations tested.
+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_
